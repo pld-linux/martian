@@ -1,3 +1,6 @@
+# TODO
+# - -Wl,-q broken for gcc 4.6 (gcc 4.5 is ok)
+# - disable stripping martian_modem as it needs to resolve it's symbols at runtime
 #
 # Conditional build:
 %bcond_without	dist_kernel	# allow non-distribution kernel
@@ -16,7 +19,7 @@
 %define		_enable_debug_packages	0
 %endif
 
-%define		rel	0.1
+%define		rel	0.5
 %define		pname	martian
 Summary:	martian / linmodem package
 Name:		%{pname}%{_alt_kernel}
@@ -69,19 +72,17 @@ touch -r %{SOURCE1} modem/ltmdmobj.o
 %{__sed} -i -e 's#gcc -#$(CC) -#g' modem/Makefile
 
 %build
-%if %{with kernel}
-%build_kernel_modules -m %{pname}_dev -C kmodule
-%endif
-
 %if %{with userspace}
 %{__make} -C modem martian_modem \
 	CC="%{__cc}" \
 	CFLAGS="%{rpmcflags} -Wall" \
-	MLDFLAGS="%{rpmldflags} -lpthread -lrt" \
+	MLDFLAGS="%{rpmldflags} -Wl,-q -lpthread -lrt" \
 	SHELL=/bin/bash
-
 %endif
 
+%if %{with kernel}
+%build_kernel_modules -m %{pname}_dev -C kmodule
+%endif
 
 %install
 rm -rf $RPM_BUILD_ROOT
