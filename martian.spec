@@ -1,6 +1,5 @@
 # TODO
 # - -Wl,-q broken for gcc 4.6 (gcc 4.5 is ok)
-# - disable stripping martian_modem as it needs to resolve it's symbols at runtime
 #
 # Conditional build:
 %bcond_without	dist_kernel	# allow non-distribution kernel
@@ -19,7 +18,7 @@
 %define		_enable_debug_packages	0
 %endif
 
-%define		rel	0.5
+%define		rel	0.6
 %define		pname	martian
 Summary:	martian / linmodem package
 Name:		%{pname}%{_alt_kernel}
@@ -60,6 +59,9 @@ Requires(post,postun):	/sbin/depmod
 %requires_releq_kernel
 Requires(postun):	%releq_kernel
 %endif
+
+# may not be stripped, see modem/tweakrelocsdynamic.c
+%define		_noautostrip	.*/martian_modem
 
 %description -n kernel%{_alt_kernel}-misc-martian
 Linux Lucent/Agere Systems PCI WinModem driver.
