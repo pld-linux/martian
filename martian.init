@@ -1,0 +1,144 @@
+#!/bin/sh
+#
+# Init file for martian_modem
+#
+# chkconfig: 2345 45 55 
+#
+# description:	martian_modem long service description
+#
+# processname:	martian_modem
+# config:
+# pidfile:
+#
+### BEGIN INIT INFO
+# Provides: martian_modem
+# Default-Start: 2 3 4 5
+# Short-Description: martian_modem
+# Description: martian_modem
+### END INIT INFO
+#
+# $Id$
+
+# Source function library
+. /etc/rc.d/init.d/functions
+
+# Set defaults
+DEVICE=/dev/ttySM0
+
+# Get service config - may override defaults
+[ -f /etc/sysconfig/martian_modem ] && . /etc/sysconfig/martian_modem
+
+# configtest itself
+# must return non-zero if check failed
+# output is discarded if checkconfig is ran without details
+configtest() {
+	if ! is_module martian_dev; then
+		nls "kernel module %s is not loaded!" martian_dev
+		return 1
+	fi
+	return 0
+}
+
+# wrapper for configtest
+checkconfig() {
+	local details=${1:-0}
+
+	if [ $details = 1 ]; then
+		# run config test and display report (status action)
+		show "Checking %s configuration" "Martian Modem"; busy
+		local out
+		out=$(configtest 2>&1)
+		RETVAL=$?
+		if [ $RETVAL = 0 ]; then
+			ok
+		else
+			fail
+		fi
+		[ "$out" ] && echo >&2 "$out"
+	else
+		# run config test and abort with nice message if failed
+		# (for actions checking status before action).
+		configtest >/dev/null 2>&1
+		RETVAL=$?
+		if [ $RETVAL != 0 ]; then
+			show "Checking %s configuration" "Martian Modem"; fail
+			nls 'Configuration test failed. See details with %s "checkconfig"' $0
+			exit $RETVAL
+		fi
+	fi
+}
+
+start() {
+	# Check if the service is already running?
+	if [ -f /var/lock/subsys/martian_modem ]; then
+		msg_already_running "Martian Modem"
+		return
+	fi
+
+	[ "$DEVICE" = "/dev/ttySM0" ] && DEVICE=
+
+	checkconfig
+	msg_starting "Martian Modem"
+
+	daemon /usr/sbin/martian_modem --daemon $OPTIONS $DEVICE
+	RETVAL=$?
+	[ $RETVAL -eq 0 ] && touch /var/lock/subsys/martian_modem
+}
+
+stop() {
+	if [ ! -f /var/lock/subsys/martian_modem ]; then
+		msg_not_running "Martian Modem"
+		return
+	fi
+
+	# Stop daemons.
+	msg_stopping "Martian Modem"
+	killproc martian_modem
+	rm -f /var/lock/subsys/martian_modem
+}
+
+condrestart() {
+	if [ ! -f /var/lock/subsys/martian_modem ]; then
+		msg_not_running "Martian Modem"
+		RETVAL=$1
+		return
+	fi
+
+	checkconfig
+	stop
+	start
+}
+
+RETVAL=0
+# See how we were called.
+case "$1" in
+  start)
+	start
+	;;
+  stop)
+	stop
+	;;
+  restart)
+	checkconfig
+	stop
+	start
+	;;
+  try-restart)
+	condrestart 0
+	;;
+  force-reload)
+	condrestart 7
+	;;
+  checkconfig|configtest)
+	checkconfig 1
+	;;
+  status)
+	status martian_modem
+	RETVAL=$?
+	;;
+  *)
+	msg_usage "$0 {start|stop|restart|try-restart|force-reload|checkconfig|status}"
+	exit 3
+esac
+
+exit $RETVAL

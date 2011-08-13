@@ -18,9 +18,9 @@
 %define		_enable_debug_packages	0
 %endif
 
-%define		rel	0.6
+%define		rel	0.7
 %define		pname	martian
-Summary:	martian / linmodem package
+Summary:	Martian / Linmodem package
 Name:		%{pname}%{_alt_kernel}
 Version:	20100123
 Release:	%{rel}
@@ -33,16 +33,21 @@ Source0:	http://linmodems.technion.ac.il/packages/ltmodem/kernel-2.6/martian/mar
 # Source0-md5:	17205efb777bb48fdf6b76210cf5f8f6
 Source1:	http://linmodems.technion.ac.il/packages/ltmodem/kernel-2.6/martian/ltmdmobj.o-8.31-gcc4.gz
 # Source1-md5:	14df61d5307f6960ff9de42567db4db9
+Source2:	martian.init
 URL:		http://martian.barrelsoutofbond.org/
 BuildRequires:	bash
-Provides:	martian_dev = %{release}
+BuildRequires:	rpmbuild(macros) >= 1.379
 %if %{with kernel}
 %{?with_dist_kernel:BuildRequires:	kernel%{_alt_kernel}-module-build >= 3:2.6.20.2}
-BuildRequires:	rpmbuild(macros) >= 1.379
 %endif
+Requires(post,preun):	/sbin/chkconfig
+Requires:	rc-scripts
 # x86_64 kernel module likely builds too, but userspace is 32bit only due pre-provided binary .o
 ExclusiveArch:	%{ix86}
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
+
+# may not be stripped, see modem/tweakrelocsdynamic.c
+%define		_noautostrip	.*/martian_modem
 
 %description
 Martian is software to serve the Agere Systems PCI WinModem under
@@ -59,9 +64,6 @@ Requires(post,postun):	/sbin/depmod
 %requires_releq_kernel
 Requires(postun):	%releq_kernel
 %endif
-
-# may not be stripped, see modem/tweakrelocsdynamic.c
-%define		_noautostrip	.*/martian_modem
 
 %description -n kernel%{_alt_kernel}-misc-martian
 Linux Lucent/Agere Systems PCI WinModem driver.
@@ -91,7 +93,7 @@ rm -rf $RPM_BUILD_ROOT
 %if %{with userspace}
 install -d $RPM_BUILD_ROOT{%{_sbindir},/etc/rc.d/init.d}
 # install startup sccript
-install -p scripts/%{pname} $RPM_BUILD_ROOT/etc/rc.d/init.d
+install -p %{SOURCE2} $RPM_BUILD_ROOT/etc/rc.d/init.d/martian_modem
 # install the martian modem
 install -p modem/martian_modem $RPM_BUILD_ROOT%{_sbindir}
 %endif
@@ -103,17 +105,15 @@ install -p modem/martian_modem $RPM_BUILD_ROOT%{_sbindir}
 %clean
 rm -rf $RPM_BUILD_ROOT
 
+%post
+/sbin/chkconfig --add martian_modem
+%service martian_modem restart
+
 %post	-n kernel%{_alt_kernel}-misc-martian
 %depmod %{_kernel_ver}
 
 %postun	-n kernel%{_alt_kernel}-misc-martian
 %depmod %{_kernel_ver}
-
-%if %{with kernel}
-%files -n kernel%{_alt_kernel}-misc-martian
-%defattr(644,root,root,755)
-/lib/modules/%{_kernel_ver}/misc/*.ko*
-%endif
 
 %if %{with userspace}
 %files
@@ -121,6 +121,12 @@ rm -rf $RPM_BUILD_ROOT
 %doc README INSTALL ChangeLog Concept
 %doc Cleaning.txt sample.txt
 %doc modem/ASWMLICENSE
-%attr(754,root,root) /etc/rc.d/init.d/martian
+%attr(754,root,root) /etc/rc.d/init.d/martian_modem
 %attr(755,root,root) %{_sbindir}/martian_modem
+%endif
+
+%if %{with kernel}
+%files -n kernel%{_alt_kernel}-misc-martian
+%defattr(644,root,root,755)
+/lib/modules/%{_kernel_ver}/misc/*.ko*
 %endif
