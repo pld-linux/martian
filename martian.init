@@ -32,7 +32,7 @@ DEVICE=/dev/ttySM0
 # must return non-zero if check failed
 # output is discarded if checkconfig is ran without details
 configtest() {
-	if ! is_module martian_dev; then
+	if [ ! -d /sys/module/martian_dev ]; then
 		nls "kernel module %s is not loaded!" martian_dev
 		return 1
 	fi
