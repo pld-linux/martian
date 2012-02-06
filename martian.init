@@ -7,8 +7,6 @@
 # description:	martian_modem long service description
 #
 # processname:	martian_modem
-# config:
-# pidfile:
 #
 ### BEGIN INIT INFO
 # Provides: martian_modem
